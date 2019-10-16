@@ -1,2 +1,2 @@
 # FA-NGS
-This is a software utility for calculating pooling volumes and graphing quality control data of next generation sequencing (NGS) libraries.
+TThis is a software utility for calculating pooling volumes and graphing quality control data of next generation sequencing (NGS) libraries.
