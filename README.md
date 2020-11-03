@@ -11,6 +11,8 @@ Use the example files and Jupyter notebooks to quickly learn how to use the tool
 * Pandas
 * Matplotlib
 * Seaborn
+* Streamlit
+* Base64
 
 # Authors
 Megan E. Garber
