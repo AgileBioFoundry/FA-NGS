@@ -2,6 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+import streamlit as st
+import matplotlib.colors as mcolors
 
 class Set_up:
     
@@ -99,7 +101,8 @@ class Plates:
     def __init__(self, plate_size, quad= None, letters=None, numbers=None):
         self.plate_size = plate_size
         self.quad= quad
-
+        self.letters = letters
+        self.numbers = numbers
 
         
         if plate_size == 384:
@@ -188,7 +191,7 @@ class Plates:
 
 
         else:
-            plate = Plates(self.plate_size, self.letters, self.numbers).make_plate().rename(columns = {0:"Source Well"})
+            plate = Plates(self.plate_size, quad= None, letters=self.letters, numbers = self.numbers).make_plate().rename(columns = {0:"Source Well"})
 
 
         if failed_wells:
@@ -276,7 +279,8 @@ class Analysis:
             ax.set_title(title)
 
             ax = plt.gca() 
-            
+        return fig
+    
     def read_quant_file(self):
         df = pd.read_excel(self.file)     
         df.drop("Cycle", axis =1, inplace=True)
@@ -326,6 +330,8 @@ class Analysis:
         plt.ylim(top = 5000)
         plt.ylim(bottom = -100)
         
+        return fig
+        
     def read_endRFU_file(self):
         split_plate = Plates(self.plate_size, self.quad, self.letters, self.numbers).split_wells()
         Well = []
@@ -347,9 +353,14 @@ class Analysis:
     
     def plot_end_RFU(self):
         df_pivot = Analysis(self.file, self.plate_size, self.quad, self.letters, self.numbers).read_endRFU_file()
+        dict_cols = {}
+        for i in df_pivot.columns:
+            dict_cols[i] = int(i)
         
+        df_pivot.rename(columns = dict_cols, inplace= True)
+        df_pivot.sort_index(axis=1, inplace = True)
         sns.set(context='paper', style='whitegrid', palette='deep', 
-            font='sans-serif', font_scale=1.2, color_codes=True,  rc={"font.size":9})
+            font='sans-serif', font_scale=1, color_codes=True,  rc={"font.size":9})
         cols = len(df_pivot.columns.values)
         rows = len(df_pivot.index.values)
 
@@ -358,23 +369,23 @@ class Analysis:
             f, (ax, cbar_ax) = plt.subplots(2, figsize=(0.6*cols, 2*rows), gridspec_kw=grid_kws)
 
         else:
-            grid_kws = {"height_ratios": (.9, .1)}#, "hspace": 0.2*.7*rows}
+            grid_kws = {"height_ratios": (.9, .05)}#, "hspace": 0.2*.7*rows}
             f, (ax, cbar_ax) = plt.subplots(2, figsize=(0.6*cols, .4*rows), gridspec_kw=grid_kws)
 
         ax = sns.heatmap(df_pivot,  ax = ax, cbar_ax=cbar_ax,
                          linewidths = 0.05, 
-                         cmap = sns.cubehelix_palette(n_colors=100, start=5.6, 
-                                      rot=0.03, gamma=.3, hue=1.5, light=.8, dark=.01, reverse=False), 
-                         vmin=0,
+                         cmap = "RdYlBu", 
+                         vmin=100,
+                         vmax = 1500,
                          cbar_kws={'label': 'End_RFU', 
                                    "shrink": 0.2,
-                                   "orientation": "horizontal"})
+                                   "orientation": "horizontal"}, annot = True)
 
         ax.set_yticklabels(ax.get_yticklabels(), rotation = 0, fontsize = 9)
         plt.tight_layout(pad=1)
         ax = plt.gca()
 
-
+        return f
         
 class Pooling_Calculator:
     def __init__(self, file, plate_size, quad = None, letters = None, numbers = None, failed_wells = None,
@@ -445,7 +456,7 @@ class Pooling_Calculator:
     
     def plot_transfer_volumes(self):
         
-        df = df = Pooling_Calculator(self.file, 
+        df = Pooling_Calculator(self.file, 
                                 self.plate_size, 
                                 self.quad, 
                                 self.letters, 
@@ -455,37 +466,56 @@ class Pooling_Calculator:
         
 
 
-        df_pivot = df.loc[:,['rows','columns','Transfer Volume']].dropna(how='any').reset_index().pivot(index='rows', 
-                                                                               columns='columns', 
-                                                                               values='Transfer Volume')
+        df_pivot = df.loc[:,['rows','columns','Transfer Volume']]\
+                        .dropna(how='any').reset_index()\
+                        .pivot(index='rows', columns='columns', values='Transfer Volume')
         
         
+        
+        dict_cols = {}
+        for i in df_pivot.columns:
+            dict_cols[i] = int(i)
+        
+        df_pivot.rename(columns = dict_cols, inplace= True)
+        df_pivot.sort_index(axis=1, inplace = True)
         
         #initialize plot
         sns.set(context='paper', style='whitegrid', palette='deep', 
-                font='sans-serif', font_scale=1.2, color_codes=True,  rc={"font.size":9})
+            font='sans-serif', font_scale=.5, color_codes=True,  rc={"font.size":9})
+        
         cols = len(df_pivot.columns.values)
         rows = len(df_pivot.index.values)
 
         if rows < 3:
-            grid_kws = {"height_ratios": (.9, .4)}#, "hspace": 0.2*.7*rows}
+            grid_kws = {"height_ratios": (.45, .2)}#, "hspace": 0.2*.7*rows}
             f, (ax, cbar_ax) = plt.subplots(2, figsize=(0.6*cols, 2*rows), gridspec_kw=grid_kws)
 
         else:
-            grid_kws = {"height_ratios": (.9, .1)}#, "hspace": 0.2*.7*rows}
-            f, (ax, cbar_ax) = plt.subplots(2, figsize=(0.6*cols, .4*rows), gridspec_kw=grid_kws)
+            grid_kws = {"height_ratios": (.45, .025)}#, "hspace": 0.2*.7*rows}
+            f, (ax, cbar_ax) = plt.subplots(2, figsize=(0.3*cols, .2*rows), gridspec_kw=grid_kws)
 
+        colors1 = plt.cm.RdYlBu_r(np.linspace(0., 1, 128))
+        colors2 = plt.cm.bone(np.linspace(0, 1, 20))[:7]
+
+        # combine them and build a new colormap
+        colors = np.vstack((colors2, colors1))
+        mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
+        
+        
         ax = sns.heatmap(df_pivot,  ax = ax, cbar_ax=cbar_ax,
                          linewidths = 0.05, 
-                         cmap = sns.cubehelix_palette(n_colors=100, start=5.6, 
-                                      rot=0.03, gamma=.3, hue=1.5, light=.8, dark=.01, reverse=False), 
-                         vmin=0,
+                         cmap = mymap, 
+                         vmin=-100,
+                         vmax = 2000,
                          cbar_kws={'label': 'Transfer Volume', 
-                                   "shrink": 0.2,
+                                   "shrink": 0.1,
                                    "orientation": "horizontal"})
 
-        ax.set_yticklabels(ax.get_yticklabels(), rotation = 0, fontsize = 9)
+        ax.set_yticklabels(ax.get_yticklabels(), rotation = 0, fontsize = 4.5)
         plt.tight_layout(pad=1)
         ax = plt.gca()
+        
+
+        return f
 
 
